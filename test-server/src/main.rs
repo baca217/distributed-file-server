@@ -30,15 +30,3 @@ fn listen_connection(){
         }
     }
 }
-
-fn get_child_servers(){
-    let contents = fs::read_to_string(filename)
-}
-
-fn check_on_files(){
-
-}
-
-fn send_files(mut stream: TcpStream){
-    stream.write(b"test");
-}

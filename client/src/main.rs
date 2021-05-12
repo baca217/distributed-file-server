@@ -30,3 +30,16 @@ fn get_files(){
     }
     println!("TOT: {}", tot);
 } //stream is closed here
+
+fn get_child_servers(){
+    let contents = fs::read_to_string(filename)
+        .expect("Something went wrong reading the file");
+}
+
+fn check_on_files(){
+
+}
+
+fn send_files(mut stream: TcpStream){
+    stream.write(b"test");
+}
