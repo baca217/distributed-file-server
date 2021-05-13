@@ -2,11 +2,6 @@ use std::thread;
 use std::net::{TcpListener, TcpStream, Shutdown};
 use std::io::{Read, Write};
 
-struct ChildServers{
-    ipAddr: [u8; 4],
-    port: u16,
-}
-
 fn main() {
     listen_connection()
 }
