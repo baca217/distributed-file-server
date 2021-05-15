@@ -5,10 +5,6 @@ use std::fs; //for pulling server information from file
 use std::net::{SocketAddr, IpAddr, Ipv4Addr}; //for checking the IP addresses within the file
 use std::collections::HashMap; //for keeping track of the files we have
 
-struct file_info {
-    servers: array[SocketAddr; 4],
-}
-
 fn main() {
     let servers = match get_child_servers(){
         None => Vec::new(),
@@ -27,7 +23,9 @@ fn main() {
  * be printed to the user. If the file is incomplete an ERROR not enough pieces will be printed.
  * */
 fn get_files(servers: Vec<SocketAddr>){
-    let mut files = Vec::new();
+//    let mut files = Vec::new();
+    let mut tot = String::new(); 
+
     for serv in servers{
         match TcpStream::connect(serv) {
             Ok(mut stream) => {
@@ -36,10 +34,9 @@ fn get_files(servers: Vec<SocketAddr>){
 
                 match stream.read(&mut data){
                     Ok(_) => {
-                        let text = from_utf8(&data).unwrap().to_string();
-
+                        let text = from_utf8(&data).unwrap();
                         println!("RECEIVED: {}", text);
-                        tot.push(text);
+                        tot.push_str(text);
                     },
                     Err(e) => {
                         println!("Failed to receive data: {}", e);
@@ -50,11 +47,11 @@ fn get_files(servers: Vec<SocketAddr>){
                 println!("Failed to connect: {}", e);
             }
         }
+        parse_avl_files(serv, tot.to_string());
+        tot = String::new();
     }
 
-    for i in tot{
-        println!("{}", i);
-    }
+
 } //stream is closed here
 
 /*
@@ -66,7 +63,26 @@ fn get_files(servers: Vec<SocketAddr>){
  * How it works: seperates the text by newline, then takes the last char in the string to see what
  * piece of the file it is. A vector of tuples with the file name and file number is returned.
  * */
-fn parse_avl_files(files : String) -> Vec<String>{
+fn parse_avl_files(server: SocketAddr, files : String) -> Vec<String>{
+//    let mut info = HashMap::new();
+    let names: Vec<&str> = files.split("\n").collect();
+    for f in names{
+        let mut temp:String = f.to_string();
+        println!("len {}", temp.chars().count());
+        let num:char = match temp.pop(){
+            Some(val) => {
+                println!("got value!!!");
+                val
+            },
+            None=> {
+                println!("no value");
+                '0'
+            },
+        };
+        temp.pop();
+        println!("FILE = {}\nPIECE: {}", temp, num);
+    }
+    Vec::new()
 }
 
 fn get_child_servers() -> Option<Vec<SocketAddr>>{
