@@ -5,6 +5,13 @@ use std::fs; //for pulling server information from file
 use std::net::{SocketAddr, IpAddr, Ipv4Addr}; //for checking the IP addresses within the file
 use std::collections::HashMap; //for keeping track of the files we have
 
+struct Servers{
+    serv1: Option<SocketAddr>,
+    serv2: Option<SocketAddr>,
+    serv3: Option<SocketAddr>,
+    serv4: Option<SocketAddr>,
+}
+
 fn main() {
     let servers = match get_child_servers(){
         None => Vec::new(),
@@ -64,10 +71,11 @@ fn get_files(servers: Vec<SocketAddr>){
  * piece of the file it is. A vector of tuples with the file name and file number is returned.
  * */
 fn parse_avl_files(server: SocketAddr, files : String) -> Vec<String>{
-//    let mut info = HashMap::new();
+    let mut info:HashMap<String, Servers> = HashMap::new();
     let names: Vec<&str> = files.split("\n").collect();
     for f in names{
         let mut temp:String = f.to_string();
+        let mut holder = temp.split(".");
         println!("len {}", temp.chars().count());
         let num:char = match temp.pop(){
             Some(val) => {
@@ -81,6 +89,19 @@ fn parse_avl_files(server: SocketAddr, files : String) -> Vec<String>{
         };
         temp.pop();
         println!("FILE = {}\nPIECE: {}", temp, num);
+        if !info.contains_key(&temp){ //key is contained in the array
+            let new = Servers{
+                    serv1: None,
+                    serv2: None,
+                    serv3: None,
+                    serv4: None,
+                };
+            info.insert(
+                temp,
+                new,
+                );
+        }
+        match 
     }
     Vec::new()
 }
