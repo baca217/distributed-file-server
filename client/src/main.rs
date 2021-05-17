@@ -76,13 +76,18 @@ fn parse_avl_files(server: SocketAddr, files : String) -> Vec<String>{
     let mut f_len:usize = 0;
     let names: Vec<&str> = files.split("\n").collect();
 
+    println!("\n");
     for f in names{
+        println!("LEN: {}",f_len);
         let mut temp:String = f.to_string();
         if temp.contains("."){ //file piece
-            temp = temp[..f_len].to_string();
-            println!("len {}", temp.chars().count());
-            let num = temp[temp.len() as usize];
-            println!("FILE = {}\nPIECE: {}", temp, num);
+            temp = temp[..f_len].to_string(); //getting substring since extra whitespace might exist
+            let piece = match temp.pop(){
+                Some(v) => v,
+                None => 'z',
+            };
+            temp.pop();
+            println!("FILE = {}\nPIECE: {}\n", temp, piece);
             if !info.contains_key(&temp){ //key is contained in the array
                 let new = Servers{
                         serv1: None,
@@ -97,8 +102,8 @@ fn parse_avl_files(server: SocketAddr, files : String) -> Vec<String>{
             }
         }
         else{ //len of file
-            let f_len = match temp.parse::<i32>(){
-                Err(e) => -1,
+            f_len = match temp.parse::<usize>(){
+                Err(e) => 0,
                 Ok(v) => v,
             };
         }
