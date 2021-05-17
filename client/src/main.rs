@@ -4,6 +4,7 @@ use std::str::from_utf8;
 use std::fs; //for pulling server information from file
 use std::net::{SocketAddr, IpAddr, Ipv4Addr}; //for checking the IP addresses within the file
 use std::collections::HashMap; //for keeping track of the files we have
+mod tools;
 
 struct Servers{
     serv1: Option<SocketAddr>,
@@ -72,36 +73,35 @@ fn get_files(servers: Vec<SocketAddr>){
  * */
 fn parse_avl_files(server: SocketAddr, files : String) -> Vec<String>{
     let mut info:HashMap<String, Servers> = HashMap::new();
+    let mut f_len:usize = 0;
     let names: Vec<&str> = files.split("\n").collect();
+
     for f in names{
         let mut temp:String = f.to_string();
-        let mut holder = temp.split(".");
-        println!("len {}", temp.chars().count());
-        let num:char = match temp.pop(){
-            Some(val) => {
-                println!("got value!!!");
-                val
-            },
-            None=> {
-                println!("no value");
-                '0'
-            },
-        };
-        temp.pop();
-        println!("FILE = {}\nPIECE: {}", temp, num);
-        if !info.contains_key(&temp){ //key is contained in the array
-            let new = Servers{
-                    serv1: None,
-                    serv2: None,
-                    serv3: None,
-                    serv4: None,
-                };
-            info.insert(
-                temp,
-                new,
-                );
+        if temp.contains("."){ //file piece
+            temp = temp[..f_len].to_string();
+            println!("len {}", temp.chars().count());
+            let num = temp[temp.len() as usize];
+            println!("FILE = {}\nPIECE: {}", temp, num);
+            if !info.contains_key(&temp){ //key is contained in the array
+                let new = Servers{
+                        serv1: None,
+                        serv2: None,
+                        serv3: None,
+                        serv4: None,
+                    };
+                info.insert(
+                    temp,
+                    new,
+                    );
+            }
         }
-        match 
+        else{ //len of file
+            let f_len = match temp.parse::<i32>(){
+                Err(e) => -1,
+                Ok(v) => v,
+            };
+        }
     }
     Vec::new()
 }

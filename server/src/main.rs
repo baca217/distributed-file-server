@@ -37,5 +37,8 @@ fn get_files() -> Vec<String>{
 }
 
 fn send_files(mut stream: TcpStream){
-    stream.write(b"frick.txt.1\nfrick.txt.2");
+    let str1 = "frick.txt.1".to_string();
+    let str2 = "frick.txt.2".to_string();
+    let msg = format!("LEN:{}\n{}\nLEN:{}\n{}", str1.len(), str1, str2.len(), str2);
+    stream.write(msg.as_bytes());
 }
