@@ -88,7 +88,7 @@ fn parse_avl_files(server: SocketAddr, files : String) -> Vec<String>{
             };
             temp.pop();
             println!("FILE = {}\nPIECE: {}\n", temp, piece);
-            if !info.contains_key(&temp){ //key is contained in the array
+            if !info.contains_key(&temp){ //key is not in hash map
                 let new = Servers{
                         serv1: None,
                         serv2: None,
@@ -99,6 +99,16 @@ fn parse_avl_files(server: SocketAddr, files : String) -> Vec<String>{
                     temp,
                     new,
                     );
+            }
+            else{ //key exists in hash map
+                let mut tempServs:&Servers = &mut info[&temp]; //temporary holder for Servers struct
+                match piece{
+                    '1' => tempServs.serv1 = Some(server),
+                    '2' => tempServs.serv2 = Some(server),
+                    '3' => tempServs.serv3 = Some(server),
+                    '4' => tempServs.serv4= Some(server),
+                    _ => println!("ERROR : {}", piece),
+                };
             }
         }
         else{ //len of file
