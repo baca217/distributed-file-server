@@ -32,7 +32,8 @@ fn main() {
  * */
 fn get_files(servers: Vec<SocketAddr>){
 //    let mut files = Vec::new();
-    let mut tot = String::new(); 
+    let mut tot = String::new();
+    let mut info:HashMap<String, Servers> = HashMap::new();
 
     for serv in servers{
         match TcpStream::connect(serv) {
@@ -43,7 +44,6 @@ fn get_files(servers: Vec<SocketAddr>){
                 match stream.read(&mut data){
                     Ok(_) => {
                         let text = from_utf8(&data).unwrap();
-                        println!("RECEIVED: {}", text);
                         tot.push_str(text);
                     },
                     Err(e) => {
@@ -55,10 +55,35 @@ fn get_files(servers: Vec<SocketAddr>){
                 println!("Failed to connect: {}", e);
             }
         }
-        parse_avl_files(serv, tot.to_string());
+        parse_avl_files(serv, tot.to_string(), &mut info);
         tot = String::new();
+        
     }
-
+    for (key, value) in &info{
+        print!("FILE: {} STATUS: ", key);
+        if(value.serv1 == None || 
+           value.serv2 == None || 
+           value.serv3 == None || 
+           value.serv4 == None){
+            print!("INCOMPLETE PIECES MISSING: ");
+            if(value.serv1 == None){
+                print!("piece 1, ")
+            }
+            if(value.serv2 == None){
+                print!("piece 2, ")
+            }
+            if(value.serv3 == None){
+                print!("piece 3, ")
+            }
+            if(value.serv4 == None){
+                print!("piece 4, ")
+            }
+            println!();
+        }
+        else{
+            println!("COMPLETE");
+        }
+    }
 
 } //stream is closed here
 
@@ -71,14 +96,14 @@ fn get_files(servers: Vec<SocketAddr>){
  * How it works: seperates the text by newline, then takes the last char in the string to see what
  * piece of the file it is. A vector of tuples with the file name and file number is returned.
  * */
-fn parse_avl_files(server: SocketAddr, files : String) -> Option<Vec<String>>{
-    let mut info:HashMap<String, Servers> = HashMap::new();
+fn parse_avl_files(server: SocketAddr, 
+                   files : String, 
+                   info:&mut HashMap<String, Servers>){
     let mut f_len:usize = 0;
     let names: Vec<&str> = files.split("\n").collect();
 
     println!("\n");
     for f in names{
-        println!("LEN: {}",f_len);
         let mut temp:String = f.to_string();
         if temp.contains("."){ //file piece
             temp = temp[..f_len].to_string(); //getting substring since extra whitespace might exist
@@ -87,7 +112,6 @@ fn parse_avl_files(server: SocketAddr, files : String) -> Option<Vec<String>>{
                 None => 'z',
             };
             temp.pop();
-            println!("FILE = {}\nPIECE: {}\n", temp, piece);
             if !info.contains_key(&temp){ //key is not in hash map
                 let new = Servers{
                         serv1: None,
@@ -100,26 +124,21 @@ fn parse_avl_files(server: SocketAddr, files : String) -> Option<Vec<String>>{
                     new,
                     );
             }
-            //key exists in hash map
             let tempServs:&mut Servers = match info.get_mut(&temp){
                 Some(v) => v,
-                None => return None
+                None => return
             }; //temporary holder for Servers struct
             match piece{
                 '1' => {
-                    println!("PIECE 1 MATCHED");
                     (*tempServs).serv1 = Some(server)
                 },
                 '2' => {
-                    println!("PIECE 2 MATCHED");
                     (*tempServs).serv2 = Some(server)
                 },
                 '3' => {
-                    println!("PIECE 3 MATCHED");
                     (*tempServs).serv3 = Some(server)
                 },
                 '4' => {
-                    println!("PIECE 4 MATCHED");
                     (*tempServs).serv4 = Some(server)
                 },
                 _ => println!("ERROR : {}", piece),
@@ -132,14 +151,6 @@ fn parse_avl_files(server: SocketAddr, files : String) -> Option<Vec<String>>{
             };
         }
     }
-    for (key, value) in &info{
-        println!("KEY: {}", key);
-        println!("SERV-1: {:?}", value.serv1);
-        println!("SERV-2: {:?}", value.serv2);
-        println!("SERV-3: {:?}", value.serv3);
-        println!("SERV-4: {:?}", value.serv4);
-    }
-    Some(Vec::new())
 }
 
 fn get_child_servers() -> Option<Vec<SocketAddr>>{
