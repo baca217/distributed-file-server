@@ -10,7 +10,10 @@ fn main() {
 }
 
 fn listen_connection(){
-    let PORT = 5555;
+    let PORT = match get_port(){
+        Some(v) => v,
+        None => return,
+    };
     let listener = TcpListener::bind(format!("0.0.0.0:{}", PORT)).unwrap();
     println!("Server listening on port {}", PORT);
 
@@ -30,6 +33,32 @@ fn listen_connection(){
                 println!("Error: {}", e);
             }
         }
+    }
+}
+
+fn get_port() -> Option<i32>{
+    let mut file = match fs::File::open("./info/port.txt"){
+        Ok(v) => v,
+        Err(e) => {
+            println!("ERR: {}", e);
+            return None;
+        },
+    };
+    let mut contents = String::new();
+    match file.read_to_string(&mut contents){
+        Ok(v) => (),
+        Err(e) => {
+            println!("couldn't read info from port");
+            return None;
+        }
+    };
+    println!("CONTENT: {}", contents);
+    match contents.trim_end().parse::<i32>(){
+        Ok(v) => return Some(v),
+        Err(e) => {
+            println!("ERR: {}", e);
+            return None;
+        },
     }
 }
 
