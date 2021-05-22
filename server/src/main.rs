@@ -2,9 +2,11 @@ use std::thread;
 use std::net::{TcpListener, TcpStream, Shutdown};
 use std::io::{Read, Write};
 use std::fs;
+//extern crate glob;
+//use glob::glob;
 
 fn main() {
-    listen_connection()
+    listen_connection();
 }
 
 fn listen_connection(){
@@ -16,8 +18,12 @@ fn listen_connection(){
         match stream{
             Ok(stream) => {
                 println!("New connection: {}", stream.peer_addr().unwrap());
+                let files = match get_files(){
+                    Some(v) => v,
+                    None => "NO FILES".to_string(),
+                };
                 thread::spawn(move|| {
-                    send_files(stream)
+                    send_files(stream, files)
                 });
             }
             Err(e) => {
@@ -27,18 +33,37 @@ fn listen_connection(){
     }
 }
 
-fn get_files() -> Vec<String>{
-    let paths = fs::read_dir("./files").unwrap();
+fn get_files() -> Option<String>{
+    let mut holder:String = String::new();
+
+    let paths = match fs::read_dir("./files"){
+        Ok(v) => v,
+        Err(E) => {
+            println!("Couldn't open directory ./files");
+            return None
+        },
+    };
 
     for path in paths {
-        println!("Name: {}", path.unwrap().path().display())
+        let temp:String = match path.unwrap().path().into_os_string().into_string(){
+            Ok(v) => v,
+            Err(e) => {
+                println!("Wasn't able to conver path to string");
+                continue;
+            },
+        };
+        let vec: Vec<&str> = temp.split("/").collect();
+        let file: &str = vec[vec.len()-1];
+        holder.push_str(&file.len().to_string());
+        holder.push_str("\n");
+        holder.push_str(vec[vec.len()-1]);
+        holder.push_str("\n");
     }
-    Vec::new()
+
+    println!("holder: {}", holder);
+    Some(holder)
 }
 
-fn send_files(mut stream: TcpStream){
-    let str1 = "frick.txt.1".to_string();
-    let str2 = "frick.txt.2".to_string();
-    let msg = format!("{}\n{}\n{}\n{}", str1.len(), str1, str2.len(), str2);
-    stream.write(msg.as_bytes());
+fn send_files(mut stream: TcpStream, files: String){
+    stream.write(files.as_bytes());
 }
