@@ -156,7 +156,7 @@ fn send_file(mut stream: TcpStream){
 fn download_file(info:HashMap<String, Servers>){
     let mut input = String::new();
 
-    for (key, value) in &info{
+    for (key, value) in &info{ //printing the files and completion status
         print!("FILE: {} STATUS: ", key);
         if(value.serv1 == None || 
            value.serv2 == None || 
@@ -190,7 +190,64 @@ fn download_file(info:HashMap<String, Servers>){
             return
         },
     };
+    input = input.to_string().trim().to_string();
     println!("INPUT: {}", input);
+
+    let temp:&Servers = match info.get(&input){
+        Some(v) => v,
+        None => {
+            println!("file \"{}\" does not exist",input);
+            return
+        },
+    };
+
+    if(temp.serv1 == None || 
+       temp.serv2 == None || 
+       temp.serv3 == None || 
+       temp.serv4 == None){
+        println!("file {} is incomplete!!!. Won't be downloading", input);
+        return
+    }
+
+    println!("file {} is complete!!!", input);
+    match temp.serv1{
+        Some(v) => download_piece(v, &input, 1 as u8),
+        None => (),
+    }
+}
+
+fn download_piece(server: SocketAddr, fileName: &str, piece: u8){
+    let mut file = match fs::File::create(format!("{}.{}",fileName, piece)){
+        Ok(v) => v,
+        Err(e) => {
+            println!("Error creating file\nERR: {}", e);
+            return
+        },
+    };
+    match TcpStream::connect(server) {
+        Ok(mut stream) => {
+            println!("Successfully connected to server in port 3333");
+            let mut data = [0 as u8; 8192];
+            let mut bytes = 0;
+
+            loop{
+                bytes = match stream.read(&mut data){
+                    Ok(v) => v,
+                    Err(e) => {
+                        println!("Failed to receive data: {}", e);
+                        return
+                    },
+                };
+                if (bytes == 0){break};
+                file.write_all(&data[0..bytes]);
+                println!("BYTES: {}", bytes);
+            }
+        },
+        Err(e) => {
+            println!("Failed to connect: {}", e);
+        }
+    }
+    println!("Completed writing file {}.{}", fileName, piece);
 }
 
 #[test]
