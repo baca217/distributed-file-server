@@ -56,35 +56,9 @@ fn get_files(servers: Vec<SocketAddr>){
             }
         }
         parse_avl_files(serv, tot.to_string(), &mut info);
-        tot = String::new();
-        
+        tot = String::new();    
     }
-    for (key, value) in &info{
-        print!("FILE: {} STATUS: ", key);
-        if(value.serv1 == None || 
-           value.serv2 == None || 
-           value.serv3 == None || 
-           value.serv4 == None){
-            print!("INCOMPLETE PIECES MISSING: ");
-            if(value.serv1 == None){
-                print!("piece 1, ")
-            }
-            if(value.serv2 == None){
-                print!("piece 2, ")
-            }
-            if(value.serv3 == None){
-                print!("piece 3, ")
-            }
-            if(value.serv4 == None){
-                print!("piece 4, ")
-            }
-            println!();
-        }
-        else{
-            println!("COMPLETE");
-        }
-    }
-
+    download_file(info);
 } //stream is closed here
 
 /*
@@ -175,8 +149,48 @@ fn get_child_servers() -> Option<Vec<SocketAddr>>{
     return Some(servers);
 }
 
-fn send_files(mut stream: TcpStream){
+fn send_file(mut stream: TcpStream){
     stream.write(b"test");
+}
+
+fn download_file(info:HashMap<String, Servers>){
+    let mut input = String::new();
+
+    for (key, value) in &info{
+        print!("FILE: {} STATUS: ", key);
+        if(value.serv1 == None || 
+           value.serv2 == None || 
+           value.serv3 == None || 
+           value.serv4 == None){
+            print!("INCOMPLETE PIECES MISSING: ");
+            if(value.serv1 == None){
+                print!("piece 1, ")
+            }
+            if(value.serv2 == None){
+                print!("piece 2, ")
+            }
+            if(value.serv3 == None){
+                print!("piece 3, ")
+            }
+            if(value.serv4 == None){
+                print!("piece 4, ")
+            }
+            println!();
+        }
+        else{
+            println!("COMPLETE");
+        }
+    }
+
+    println!("Enter the name of the file you would like: ");
+    let b1 = match std::io::stdin().read_line(&mut input){
+        Ok(v) => v,
+        Err(e) => {
+            println!("ERR: {}", e);
+            return
+        },
+    };
+    println!("INPUT: {}", input);
 }
 
 #[test]
