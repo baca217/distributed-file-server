@@ -210,10 +210,24 @@ fn download_file(info:HashMap<String, Servers>){
     }
 
     println!("file {} is complete!!!", input);
+    let mut arr: [SocketAddr; 4] = [
+            temp.serv1.unwrap(),
+            temp.serv2.unwrap(),
+            temp.serv3.unwrap(),
+            temp.serv4.unwrap(),
+    ];
+
+    for n in 0..4 {
+        println!("{}", arr[n]);
+        download_piece(arr[n], &input, n as u8);
+        println!("downloaded piece {}", n);
+    }
+    /*
     match temp.serv1{
         Some(v) => download_piece(v, &input, 1 as u8),
         None => (),
     }
+    */
 }
 
 fn download_piece(server: SocketAddr, fileName: &str, piece: u8){
