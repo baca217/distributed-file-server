@@ -4,6 +4,7 @@ use std::str::from_utf8;
 use std::fs; //for pulling server information from file
 use std::net::{SocketAddr, IpAddr, Ipv4Addr}; //for checking the IP addresses within the file
 use std::collections::HashMap; //for keeping track of the files we have
+use std::thread; //for downloading each piece of the file
 mod tools;
 
 struct Servers{
@@ -218,19 +219,52 @@ fn download_file(info:HashMap<String, Servers>){
     ];
 
     for n in 0..4 {
-        println!("{}", arr[n]);
-        download_piece(arr[n], &input, n as u8);
-        println!("downloaded piece {}", n);
+        let temp:String = input.clone();
+        let handle = thread::spawn(move || {
+            download_piece(arr[n], temp, (n+1) as u8);
+        });
+        match handle.join() {
+            Ok(v) => (),
+            Err(e) => println!("Error when joining thread {}\nERR: {:?}", n, e),
+        }
     }
-    /*
-    match temp.serv1{
-        Some(v) => download_piece(v, &input, 1 as u8),
-        None => (),
-    }
-    */
+    combine_pieces(&input);
 }
 
-fn download_piece(server: SocketAddr, fileName: &str, piece: u8){
+fn combine_pieces(fileName: &str){
+    let mut tot = match fs::File::create(fileName){
+        Ok(v) => v,
+        Err(e) => {
+            println!("failed top open file {}", fileName);
+            return;
+        },
+    };
+
+    for i in 0..4{
+        let pname = format!("{}.{}", fileName, i+1);
+        let mut piece = match fs::File::open(&pname){
+            Ok(v) => v,
+            Err(e) => {
+                println!("file {} failed to open", pname);
+                return;
+            },
+        };
+        let mut buffer = Vec::new();
+        match piece.read_to_end(&mut buffer){
+            Ok(v) => (),
+            Err(e) => println!("Error reading file {}\nERR: {}", pname, e), 
+        };
+        tot.write_all(&buffer);
+        match fs::remove_file(&pname){
+            Ok(v) => (),
+            Err(e) => {
+                println!("failed to remove file {}", pname);
+            }
+        };
+    }
+}
+
+fn download_piece(server: SocketAddr, fileName: String, piece: u8){
     let mut file = match fs::File::create(format!("{}.{}",fileName, piece)){
         Ok(v) => v,
         Err(e) => {
