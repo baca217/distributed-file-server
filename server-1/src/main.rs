@@ -21,12 +21,8 @@ fn listen_connection(){
         match stream{
             Ok(stream) => {
                 println!("New connection: {}", stream.peer_addr().unwrap());
-                let files = match get_files(){
-                    Some(v) => v,
-                    None => "NO FILES".to_string(),
-                };
                 thread::spawn(move|| {
-                    send_files(stream, files)
+                    send_files(stream)
                 });
             }
             Err(e) => {
@@ -62,14 +58,22 @@ fn get_port() -> Option<i32>{
     }
 }
 
-fn get_files() -> Option<String>{
-    let mut holder:String = String::new();
+fn handler(mut stream: TcpStream){
+    let CHUNK = 1024
+    let mut buffer: [u8; CHUNK] = [0; CHUNK];
+
+    stream.read(&mut buffer);
+
+}
+
+fn send_files(mut stream: TcpStream) -> Result<(), std::io::Error>{
+    let mut files:String = String::new();
 
     let paths = match fs::read_dir("./files"){
         Ok(v) => v,
-        Err(E) => {
+        Err(e) => {
             println!("Couldn't open directory ./files");
-            return None
+            return Err(e);
         },
     };
 
@@ -77,22 +81,19 @@ fn get_files() -> Option<String>{
         let temp:String = match path.unwrap().path().into_os_string().into_string(){
             Ok(v) => v,
             Err(e) => {
-                println!("Wasn't able to conver path to string");
+                println!("Wasn't able to convert path to string");
                 continue;
             },
         };
         let vec: Vec<&str> = temp.split("/").collect();
         let file: &str = vec[vec.len()-1];
-        holder.push_str(&file.len().to_string());
-        holder.push_str("\n");
-        holder.push_str(vec[vec.len()-1]);
-        holder.push_str("\n");
+        files.push_str(&file.len().to_string());
+        files.push_str("\n");
+        files.push_str(vec[vec.len()-1]);
+        files.push_str("\n");
     }
 
-    println!("holder: {}", holder);
-    Some(holder)
-}
-
-fn send_files(mut stream: TcpStream, files: String){
     stream.write(files.as_bytes());
+    println!("sent files");
+    Ok(())
 }
