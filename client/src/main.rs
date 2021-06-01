@@ -2,7 +2,7 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 use std::str::from_utf8;
 use std::fs; //for pulling server information from file
-use std::net::{SocketAddr, IpAddr, Ipv4Addr}; //for checking the IP addresses within the file
+use std::net::{SocketAddr}; //for checking the IP addresses within the file
 use std::collections::HashMap; //for keeping track of the files we have
 use std::thread; //for downloading each piece of the file
 mod tools;
@@ -29,10 +29,16 @@ list: get list of files from servers
 file: send file to servers
 delete: delete file on server side
 INPUT: ");
-    let b1 = std::io::stdin().read_line(&mut line).unwrap();
+    let _b1 = std::io::stdin().read_line(&mut line).unwrap();
     println!("ENTERED: {}", line);
     line.push('\n');
-    stream.write(line.as_bytes());
+    match stream.write(line.as_bytes()){
+        Ok(_v) => (),
+        Err(e) => {
+            println!("Failed to send data to server");
+            println!("ERR: {}", e);
+        },
+    };
 }
 
 /*
@@ -112,29 +118,29 @@ fn parse_avl_files(server: SocketAddr,
                     new,
                     );
             }
-            let tempServs:&mut Servers = match info.get_mut(&temp){
+            let temp_servs:&mut Servers = match info.get_mut(&temp){
                 Some(v) => v,
                 None => return
             }; //temporary holder for Servers struct
             match piece{
                 '1' => {
-                    (*tempServs).serv1 = Some(server)
+                    (*temp_servs).serv1 = Some(server)
                 },
                 '2' => {
-                    (*tempServs).serv2 = Some(server)
+                    (*temp_servs).serv2 = Some(server)
                 },
                 '3' => {
-                    (*tempServs).serv3 = Some(server)
+                    (*temp_servs).serv3 = Some(server)
                 },
                 '4' => {
-                    (*tempServs).serv4 = Some(server)
+                    (*temp_servs).serv4 = Some(server)
                 },
                 _ => println!("ERROR : {}", piece),
             };
         }
         else{ //len of file
             f_len = match temp.parse::<usize>(){
-                Err(e) => 0,
+                Err(_e) => 0,
                 Ok(v) => v,
             };
         }
@@ -172,21 +178,21 @@ fn download_file(info:HashMap<String, Servers>){
 
     for (key, value) in &info{ //printing the files and completion status
         print!("FILE: {} STATUS: ", key);
-        if(value.serv1 == None || 
+        if value.serv1 == None || 
            value.serv2 == None || 
            value.serv3 == None || 
-           value.serv4 == None){
+           value.serv4 == None {
             print!("INCOMPLETE PIECES MISSING: ");
-            if(value.serv1 == None){
+            if value.serv1 == None {
                 print!("piece 1, ")
             }
-            if(value.serv2 == None){
+            if value.serv2 == None {
                 print!("piece 2, ")
             }
-            if(value.serv3 == None){
+            if value.serv3 == None {
                 print!("piece 3, ")
             }
-            if(value.serv4 == None){
+            if value.serv4 == None {
                 print!("piece 4, ")
             }
             println!();
@@ -197,7 +203,7 @@ fn download_file(info:HashMap<String, Servers>){
     }
 
     println!("Enter the name of the file you would like: ");
-    let b1 = match std::io::stdin().read_line(&mut input){
+    let _b1 = match std::io::stdin().read_line(&mut input){
         Ok(v) => v,
         Err(e) => {
             println!("ERR: {}", e);
@@ -215,16 +221,16 @@ fn download_file(info:HashMap<String, Servers>){
         },
     };
 
-    if(temp.serv1 == None || 
+    if temp.serv1 == None || 
        temp.serv2 == None || 
        temp.serv3 == None || 
-       temp.serv4 == None){
+       temp.serv4 == None {
         println!("file {} is incomplete!!!. Won't be downloading", input);
         return
     }
 
     println!("file {} is complete!!!", input);
-    let mut arr: [SocketAddr; 4] = [
+    let arr: [SocketAddr; 4] = [
             temp.serv1.unwrap(),
             temp.serv2.unwrap(),
             temp.serv3.unwrap(),
@@ -237,48 +243,58 @@ fn download_file(info:HashMap<String, Servers>){
             download_piece(arr[n], temp, (n+1) as u8);
         });
         match handle.join() {
-            Ok(v) => (),
+            Ok(_v) => (),
             Err(e) => println!("Error when joining thread {}\nERR: {:?}", n, e),
         }
     }
     combine_pieces(&input);
 }
 
-fn combine_pieces(fileName: &str){
-    let mut tot = match fs::File::create(fileName){
+fn combine_pieces(file_name: &str){
+    let mut tot = match fs::File::create(file_name){
         Ok(v) => v,
         Err(e) => {
-            println!("failed top open file {}", fileName);
+            println!("failed top open file {}", file_name);
+            println!("ERR: {}", e);
             return;
         },
     };
 
     for i in 0..4{
-        let pname = format!("{}.{}", fileName, i+1);
+        let pname = format!("{}.{}", file_name, i+1);
         let mut piece = match fs::File::open(&pname){
             Ok(v) => v,
             Err(e) => {
                 println!("file {} failed to open", pname);
+                println!("ERR: {}", e);
                 return;
             },
         };
         let mut buffer = Vec::new();
         match piece.read_to_end(&mut buffer){
-            Ok(v) => (),
+            Ok(_v) => (),
             Err(e) => println!("Error reading file {}\nERR: {}", pname, e), 
         };
-        tot.write_all(&buffer);
+        match tot.write_all(&buffer){
+            Ok(_v) => (),
+            Err(e) => {
+                println!("Error occurred when writing to total combined file");
+                println!("ERR: {}", e);
+                return;
+            }
+        };
         match fs::remove_file(&pname){
-            Ok(v) => (),
+            Ok(_v) => (),
             Err(e) => {
                 println!("failed to remove file {}", pname);
+                println!("ERR: {}", e);
             }
         };
     }
 }
 
-fn download_piece(server: SocketAddr, fileName: String, piece: u8){
-    let mut file = match fs::File::create(format!("{}.{}",fileName, piece)){
+fn download_piece(server: SocketAddr, file_name: String, piece: u8){
+    let mut file = match fs::File::create(format!("{}.{}",file_name, piece)){
         Ok(v) => v,
         Err(e) => {
             println!("Error creating file\nERR: {}", e);
@@ -289,18 +305,24 @@ fn download_piece(server: SocketAddr, fileName: String, piece: u8){
         Ok(mut stream) => {
             println!("Successfully connected to server in port 3333");
             let mut data = [0 as u8; 8192];
-            let mut bytes = 0;
 
             loop{
-                bytes = match stream.read(&mut data){
+                let bytes = match stream.read(&mut data){
                     Ok(v) => v,
                     Err(e) => {
                         println!("Failed to receive data: {}", e);
                         return
                     },
                 };
-                if (bytes == 0){break};
-                file.write_all(&data[0..bytes]);
+                if bytes == 0 {break};
+                match file.write_all(&data[0..bytes]){
+                    Ok(_v) => (),
+                    Err(e) => {
+                        println!("error writing to file {}.{}", file_name, piece);
+                        println!("ERR: {}", e);
+                        return;
+                    },
+                };
                 println!("BYTES: {}", bytes);
             }
         },
@@ -308,7 +330,7 @@ fn download_piece(server: SocketAddr, fileName: String, piece: u8){
             println!("Failed to connect: {}", e);
         }
     }
-    println!("Completed writing file {}.{}", fileName, piece);
+    println!("Completed writing file {}.{}", file_name, piece);
 }
 
 #[test]

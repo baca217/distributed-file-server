@@ -1,5 +1,6 @@
 use std::io::{self,stdin, stdout, Read, Write};
 
+#[allow(dead_code)]
 pub fn pause() {
     let mut stdout = stdout();
     stdout.write(b"Press Enter to continue...").unwrap();
@@ -7,6 +8,7 @@ pub fn pause() {
     stdin().read(&mut [0]).unwrap();
 }
 
+#[allow(dead_code)]
 pub fn get_input() -> String {
     let mut buffer = String::new();
     let stdin = io::stdin();
@@ -15,6 +17,7 @@ pub fn get_input() -> String {
     return buffer;
 }
 
+#[allow(dead_code)]
 pub fn remove_whitespace(s: &mut String) {
     s.retain(|c| !c.is_whitespace());
 }
