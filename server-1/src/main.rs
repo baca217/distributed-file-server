@@ -2,8 +2,7 @@ use std::thread;
 use std::net::{TcpListener, TcpStream, Shutdown};
 use std::io::{Read, Write};
 use std::fs;
-//extern crate glob;
-//use glob::glob;
+use std::str; //for parsing TCP stream
 
 fn main() {
     listen_connection();
@@ -21,9 +20,12 @@ fn listen_connection(){
         match stream{
             Ok(stream) => {
                 println!("New connection: {}", stream.peer_addr().unwrap());
+                handler(stream);
+                /*
                 thread::spawn(move|| {
                     send_files(stream)
                 });
+                */
             }
             Err(e) => {
                 println!("Error: {}", e);
@@ -59,11 +61,35 @@ fn get_port() -> Option<i32>{
 }
 
 fn handler(mut stream: TcpStream){
-    let CHUNK = 1024
+    const CHUNK:usize = 1024;
     let mut buffer: [u8; CHUNK] = [0; CHUNK];
+    let mut size =  0;
 
-    stream.read(&mut buffer);
+    loop{
+        match stream.read(&mut buffer){
+            Ok(_) => break,
+            Err(e) => {
+                println!("Error in reading TCP stream\nERR: {}", e);
+                return;
+            },
+        }
+    }
 
+    let mut result = match str::from_utf8(&buffer){
+        Ok(v) => v,
+        Err(e) => {
+            println!("Error in converting TCP stream to string\nERR: {}", e);
+            return;
+        },
+    };
+
+    let args: Vec<&str> = result.split("\n").collect();
+    match args[0]{
+        "list" => println!("going to send list of files to client"),
+        "file" => println!("going to receive file from client"),
+        "delete" => println!("going to delete the file on server"),
+        _ => println!("NOT A CASE: {}", args[0]),
+    }
 }
 
 fn send_files(mut stream: TcpStream) -> Result<(), std::io::Error>{

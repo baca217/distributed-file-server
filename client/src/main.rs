@@ -22,6 +22,19 @@ fn main() {
     get_files(servers);
 }
 
+fn menu(mut stream: &TcpStream){
+    let mut line = String::new();
+    print!("Enter what options you would like
+list: get list of files from servers
+file: send file to servers
+delete: delete file on server side
+INPUT: ");
+    let b1 = std::io::stdin().read_line(&mut line).unwrap();
+    println!("ENTERED: {}", line);
+    line.push('\n');
+    stream.write(line.as_bytes());
+}
+
 /*
  * Function: get_files()
  *
@@ -32,7 +45,6 @@ fn main() {
  * be printed to the user. If the file is incomplete an ERROR not enough pieces will be printed.
  * */
 fn get_files(servers: Vec<SocketAddr>){
-//    let mut files = Vec::new();
     let mut tot = String::new();
     let mut info:HashMap<String, Servers> = HashMap::new();
 
@@ -40,6 +52,7 @@ fn get_files(servers: Vec<SocketAddr>){
         match TcpStream::connect(serv) {
             Ok(mut stream) => {
                 println!("Successfully connected to server in port 3333");
+                menu(&mut stream);
                 let mut data = [0 as u8; 8192];
 
                 match stream.read(&mut data){
