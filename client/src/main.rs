@@ -15,30 +15,32 @@ struct Servers{
 }
 
 fn main() {
-    let servers = match get_child_servers(){
+    menu();
+}
+
+fn menu(){
+    let servers = match get_child_servers(){ //getting list of servers
         None => Vec::new(),
         Some(val) => val,
     };
-    get_files(servers);
-}
-
-fn menu(mut stream: &TcpStream){
     let mut line = String::new();
-    print!("Enter what options you would like
+    println!("Enter what options you would like
 list: get list of files from servers
 file: send file to servers
 delete: delete file on server side
-INPUT: ");
+get: get a file\n");
     let _b1 = std::io::stdin().read_line(&mut line).unwrap();
-    println!("ENTERED: {}", line);
-    line.push('\n');
-    match stream.write(line.as_bytes()){
-        Ok(_v) => (),
-        Err(e) => {
-            println!("Failed to send data to server");
-            println!("ERR: {}", e);
-        },
-    };
+    line.pop();
+
+    let args: Vec<&str> = line.split(" ").collect();
+
+    match args[0]{
+        "list" => get_files(servers),
+        "file" => println!("\"file\" does nothing for now"),
+        "delete" => println!("\"delete\" does nothing for now"),
+        "get" => println!("\"get\" does nothing for now"),
+        _ => println!("\"{}\" is not an option", args[0]),
+    }
 }
 
 /*
@@ -58,7 +60,6 @@ fn get_files(servers: Vec<SocketAddr>){
         match TcpStream::connect(serv) {
             Ok(mut stream) => {
                 println!("Successfully connected to server in port 3333");
-                menu(&mut stream);
                 let mut data = [0 as u8; 8192];
 
                 match stream.read(&mut data){
