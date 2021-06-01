@@ -1,5 +1,5 @@
 use std::thread;
-use std::net::{TcpListener, TcpStream, Shutdown};
+use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
 use std::fs;
 use std::str; //for parsing TCP stream
@@ -9,12 +9,12 @@ fn main() {
 }
 
 fn listen_connection(){
-    let PORT = match get_port(){
+    let port = match get_port(){
         Some(v) => v,
         None => return,
     };
-    let listener = TcpListener::bind(format!("0.0.0.0:{}", PORT)).unwrap();
-    println!("Server listening on port {}", PORT);
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).unwrap();
+    println!("Server listening on port {}", port);
 
     for stream in listener.incoming(){
         match stream{
@@ -44,9 +44,10 @@ fn get_port() -> Option<i32>{
     };
     let mut contents = String::new();
     match file.read_to_string(&mut contents){
-        Ok(v) => (),
+        Ok(_v) => (),
         Err(e) => {
             println!("couldn't read info from port");
+            println!("ERR: {}", e);
             return None;
         }
     };
@@ -60,10 +61,18 @@ fn get_port() -> Option<i32>{
     }
 }
 
+/*
+ * Function Name: handler()
+ *
+ * Arguments: mut stream: TcpStream
+ *
+ * Functionality: takes a TcpStream connection as an argument. Meant to receive data from client
+ * side, parse the data for an argument, and then send back the appropriate response, and do the
+ * action that is wanted.
+ * */
 fn handler(mut stream: TcpStream){
     const CHUNK:usize = 1024;
     let mut buffer: [u8; CHUNK] = [0; CHUNK];
-    let mut size =  0;
 
     loop{
         match stream.read(&mut buffer){
@@ -75,7 +84,7 @@ fn handler(mut stream: TcpStream){
         }
     }
 
-    let mut result = match str::from_utf8(&buffer){
+    let result = match str::from_utf8(&buffer){
         Ok(v) => v,
         Err(e) => {
             println!("Error in converting TCP stream to string\nERR: {}", e);
@@ -85,21 +94,25 @@ fn handler(mut stream: TcpStream){
 
     let args: Vec<&str> = result.split("\n").collect();
     match args[0]{
-        "list" => println!("going to send list of files to client"),
+        "list" => {
+            println!("going to send list of files to client");
+            send_files(stream);
+        },
         "file" => println!("going to receive file from client"),
         "delete" => println!("going to delete the file on server"),
         _ => println!("NOT A CASE: {}", args[0]),
     }
 }
 
-fn send_files(mut stream: TcpStream) -> Result<(), std::io::Error>{
+fn send_files(mut stream: TcpStream){
     let mut files:String = String::new();
 
     let paths = match fs::read_dir("./files"){
         Ok(v) => v,
         Err(e) => {
             println!("Couldn't open directory ./files");
-            return Err(e);
+            println!("ERR: {:?}", e);
+            return;
         },
     };
 
@@ -108,6 +121,7 @@ fn send_files(mut stream: TcpStream) -> Result<(), std::io::Error>{
             Ok(v) => v,
             Err(e) => {
                 println!("Wasn't able to convert path to string");
+                println!("ERR: {:?}", e);
                 continue;
             },
         };
@@ -119,7 +133,11 @@ fn send_files(mut stream: TcpStream) -> Result<(), std::io::Error>{
         files.push_str("\n");
     }
 
-    stream.write(files.as_bytes());
-    println!("sent files");
-    Ok(())
+    match stream.write(files.as_bytes()){
+        Ok(_v) => println!("send list of files to client"),
+        Err(e) => {
+            println!("Error occurred while trying to send list of files to client");
+            println!("ERR: {}", e);
+        },
+    };
 }
