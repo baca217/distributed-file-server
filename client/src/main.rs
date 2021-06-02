@@ -2,9 +2,10 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 use std::str::from_utf8;
 use std::fs; //for pulling server information from file
-use std::net::{SocketAddr}; //for checking the IP addresses within the file
+use std::net::{SocketAddr, Ipv4Addr, IpAddr}; //for checking the IP addresses within the file
 use std::collections::HashMap; //for keeping track of the files we have
 use std::thread; //for downloading each piece of the file
+use fs::File; //for methods related to files
 mod tools;
 
 struct Servers{
@@ -15,7 +16,8 @@ struct Servers{
 }
 
 fn main() {
-    menu();
+//    menu();
+    backup_file("test.txt".to_string());
 }
 
 fn menu(){
@@ -28,18 +30,64 @@ fn menu(){
 list: get list of files from servers
 file: send file to servers
 delete: delete file on server side
-get: get a file\n");
+get: get a file
+backup: backup a file
+\n");
     let _b1 = std::io::stdin().read_line(&mut line).unwrap();
     line.pop();
 
     let args: Vec<&str> = line.split(" ").collect();
 
     match args[0]{
-        "list" => get_files(servers),
+        "list" => {get_files(servers);},
         "file" => println!("\"file\" does nothing for now"),
         "delete" => println!("\"delete\" does nothing for now"),
         "get" => println!("\"get\" does nothing for now"),
+        "backup" => println!("\"backup\" does nothing for now"),
         _ => println!("\"{}\" is not an option", args[0]),
+    }
+}
+
+fn backup_file(fname: String){
+    let mut file = match File::open(&fname){
+        Ok(v) => v,
+        Err(e) => {
+            println!("failed opening file for backup");
+            println!("ERR: {}", e);
+            return;
+        },
+    };
+    let metadata = match fs::metadata(&fname){
+        Ok(v) => v,
+        Err(e) => {
+            println!("error getting file metadata");
+            println!("ERR: {}", e);
+            return;
+        },
+    };
+    let mut buffer = vec![0; metadata.len() as usize];
+    match file.read(&mut buffer){
+        Ok(_v) => (),
+        Err(e) => {
+            println!("error when reading from the file");
+            println!("ERR: {}", e);
+            return;
+        },
+    }
+    println!("size of file: {}", metadata.len());
+    match std::str::from_utf8(&buffer){
+        Ok(v) => println!("contents:\n{}", v),
+        Err(e) => {
+            println!("Error converting file contents to string");
+            println!("ERR: {}", e);
+            return;
+        },
+    }
+    let fourth:usize = (metadata.len() as usize) / 4;
+
+    for i in 0..4{
+        println!("{}", i * fourth);
+        println!("{}", std::str::from_utf8(&buffer[i * fourth..(i + 1) * fourth]).unwrap());
     }
 }
 
@@ -52,9 +100,9 @@ get: get a file\n");
  * is assumed to have 4 pieces. If there is enough pieces to make up a whole file then this will
  * be printed to the user. If the file is incomplete an ERROR not enough pieces will be printed.
  * */
-fn get_files(servers: Vec<SocketAddr>){
+fn get_files(servers: Vec<SocketAddr>) -> HashMap<String, Servers>{
     let mut tot = String::new();
-    let mut info:HashMap<String, Servers> = HashMap::new();
+    let mut file_info:HashMap<String, Servers> = HashMap::new();
 
     for serv in servers{
         match TcpStream::connect(serv) {
@@ -76,10 +124,10 @@ fn get_files(servers: Vec<SocketAddr>){
                 println!("Failed to connect: {}", e);
             }
         }
-        parse_avl_files(serv, tot.to_string(), &mut info);
+        parse_avl_files(serv, tot.to_string(), &mut file_info);
         tot = String::new();    
     }
-    download_file(info);
+    return file_info;
 } //stream is closed here
 
 /*
@@ -168,10 +216,6 @@ fn get_child_servers() -> Option<Vec<SocketAddr>>{
         servers.push(server);
     }
     return Some(servers);
-}
-
-fn send_file(mut stream: TcpStream){
-    stream.write(b"test");
 }
 
 fn download_file(info:HashMap<String, Servers>){
@@ -348,7 +392,7 @@ fn test_get_servers() {
     };
     assert_eq!(test, servs);
 }
-
+/*NEED TO REWRITE THIS TEST
 #[test]
 fn test_avl_files() {
     let servs = vec![
@@ -360,9 +404,16 @@ fn test_avl_files() {
     ];
 
     let test = match get_files(servs){
-        None => Vec::new(),
+        None => Vec::new().unwrap(),
         Some(val) => val,
     };
 
     assert_eq!(test, vals);
+}
+*/
+
+#[test]
+fn test_backup() {
+    let fname = "test.txt";
+    backup_file(fname.to_string());
 }
