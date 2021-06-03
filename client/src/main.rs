@@ -48,8 +48,8 @@ backup: backup a file
     }
 }
 
-fn backup_file(fname: String){
-    let mut file = match File::open(&fname){
+fn backup_file(fname: String, serv_data: Servers){
+    let mut file = match File::open(&fname){ //opening file
         Ok(v) => v,
         Err(e) => {
             println!("failed opening file for backup");
@@ -57,7 +57,7 @@ fn backup_file(fname: String){
             return;
         },
     };
-    let metadata = match fs::metadata(&fname){
+    let metadata = match fs::metadata(&fname){ //getting file metadata
         Ok(v) => v,
         Err(e) => {
             println!("error getting file metadata");
@@ -66,7 +66,7 @@ fn backup_file(fname: String){
         },
     };
     let mut buffer = vec![0; metadata.len() as usize];
-    match file.read(&mut buffer){
+    match file.read(&mut buffer){ //reading file data into buffer
         Ok(_v) => (),
         Err(e) => {
             println!("error when reading from the file");
@@ -75,7 +75,7 @@ fn backup_file(fname: String){
         },
     }
     println!("size of file: {}", metadata.len());
-    match std::str::from_utf8(&buffer){
+    match std::str::from_utf8(&buffer){ //convert data in file to string
         Ok(v) => println!("contents:\n{}", v),
         Err(e) => {
             println!("Error converting file contents to string");
@@ -83,12 +83,44 @@ fn backup_file(fname: String){
             return;
         },
     }
-    let fourth:usize = (metadata.len() as usize) / 4;
+    let remainder = (metadata.len() as usize) % 4; //determine odd sized file pieces
+    let fourth:usize = (metadata.len() as usize) / 4; //determine fourth size of file length
+    let mut sizes: Vec<usize> = vec![fourth; 4]; //array to keep track of file sizes
+
+    for i in 0..remainder{ //updating odd sized pieces
+        sizes[i] += 1;
+    }
+
+    for i in sizes{
+        println!("piece: {}", i);
+    }
 
     for i in 0..4{
         println!("{}", i * fourth);
         println!("{}", std::str::from_utf8(&buffer[i * fourth..(i + 1) * fourth]).unwrap());
     }
+
+    /*
+    match TcpStream::connect(server) {
+        Ok(mut stream) => {
+            println!("Successfully connected to server in port 3333");
+                match file.write_all(&data[0..bytes]){
+                    Ok(_v) => (),
+                    Err(e) => {
+                        println!("error writing to file {}.{}", file_name, piece);
+                        println!("ERR: {}", e);
+                        return;
+                    },
+                };
+                println!("BYTES: {}", bytes);
+            }
+        },
+        Err(e) => {
+            println!("Failed to connect: {}", e);
+        }
+    }
+    println!("Completed writing file {}.{}", file_name, piece);
+     * */
 }
 
 /*
