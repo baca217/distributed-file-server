@@ -8,16 +8,39 @@ use std::thread; //for downloading each piece of the file
 use fs::File; //for methods related to files
 mod tools;
 
-struct Servers{
-    serv1: Option<SocketAddr>,
-    serv2: Option<SocketAddr>,
-    serv3: Option<SocketAddr>,
-    serv4: Option<SocketAddr>,
+struct FileInfo{
+    pieces: [Option<SocketAddr>; 4],
+}
+
+impl FileInfo{
+    fn complete_file(&self) -> bool{ //check if the file is complete
+        for i in &self.pieces{
+            if *i == None{return false}
+        }
+        true
+    }
+    fn missing_pieces(&self) -> Vec<i8>{ //return which pieces are missing
+        let mut missing: Vec<i8> = Vec::new();
+        for i in 0..4{
+            if self.pieces[i] == None{missing.push((i as i8)+1);}
+        }
+        missing
+    }
+
+}
+
+impl Default for FileInfo{ //filling out default info for FileInfo struct
+    fn default() -> FileInfo{
+        FileInfo{
+            pieces: [None; 4],
+        }
+    }
 }
 
 fn main() {
 //    menu();
-    backup_file("test.txt".to_string());
+//    backup_file("test.txt".to_string());
+    let test:FileInfo = Default::default();
 }
 
 fn menu(){
@@ -48,7 +71,7 @@ backup: backup a file
     }
 }
 
-fn backup_file(fname: String, serv_data: Servers){
+fn backup_file(fname: String, serv_data: FileInfo){
     let mut file = match File::open(&fname){ //opening file
         Ok(v) => v,
         Err(e) => {
@@ -120,7 +143,7 @@ fn backup_file(fname: String, serv_data: Servers){
         }
     }
     println!("Completed writing file {}.{}", file_name, piece);
-     * */
+     */
 }
 
 /*
@@ -132,9 +155,9 @@ fn backup_file(fname: String, serv_data: Servers){
  * is assumed to have 4 pieces. If there is enough pieces to make up a whole file then this will
  * be printed to the user. If the file is incomplete an ERROR not enough pieces will be printed.
  * */
-fn get_files(servers: Vec<SocketAddr>) -> HashMap<String, Servers>{
+fn get_files(servers: Vec<SocketAddr>) -> HashMap<String, FileInfo>{
     let mut tot = String::new();
-    let mut file_info:HashMap<String, Servers> = HashMap::new();
+    let mut file_info:HashMap<String, FileInfo> = HashMap::new();
 
     for serv in servers{
         match TcpStream::connect(serv) {
@@ -173,7 +196,7 @@ fn get_files(servers: Vec<SocketAddr>) -> HashMap<String, Servers>{
  * */
 fn parse_avl_files(server: SocketAddr, 
                    files : String, 
-                   info:&mut HashMap<String, Servers>){
+                   info:&mut HashMap<String, FileInfo>){
     let mut f_len:usize = 0;
     let names: Vec<&str> = files.split("\n").collect();
 
@@ -188,33 +211,28 @@ fn parse_avl_files(server: SocketAddr,
             };
             temp.pop();
             if !info.contains_key(&temp){ //key is not in hash map
-                let new = Servers{
-                        serv1: None,
-                        serv2: None,
-                        serv3: None,
-                        serv4: None,
-                    };
+                let new:FileInfo = Default::default();
                 info.insert(
                     temp.clone(),
                     new,
                     );
             }
-            let temp_servs:&mut Servers = match info.get_mut(&temp){
+            let temp_servs:&mut FileInfo = match info.get_mut(&temp){
                 Some(v) => v,
                 None => return
-            }; //temporary holder for Servers struct
+            }; //temporary holder for FileInfo struct
             match piece{
                 '1' => {
-                    (*temp_servs).serv1 = Some(server)
+                    (*temp_servs).pieces[0] = Some(server)
                 },
                 '2' => {
-                    (*temp_servs).serv2 = Some(server)
+                    (*temp_servs).pieces[1] = Some(server)
                 },
                 '3' => {
-                    (*temp_servs).serv3 = Some(server)
+                    (*temp_servs).pieces[2] = Some(server)
                 },
                 '4' => {
-                    (*temp_servs).serv4 = Some(server)
+                    (*temp_servs).pieces[3] = Some(server)
                 },
                 _ => println!("ERROR : {}", piece),
             };
@@ -250,29 +268,13 @@ fn get_child_servers() -> Option<Vec<SocketAddr>>{
     return Some(servers);
 }
 
-fn download_file(info:HashMap<String, Servers>){
+fn download_file(info:&HashMap<String, FileInfo>){
     let mut input = String::new();
 
-    for (key, value) in &info{ //printing the files and completion status
+    for (key, value) in info{ //printing the files and completion status
         print!("FILE: {} STATUS: ", key);
-        if value.serv1 == None || 
-           value.serv2 == None || 
-           value.serv3 == None || 
-           value.serv4 == None {
+        if !value.complete_file(){
             print!("INCOMPLETE PIECES MISSING: ");
-            if value.serv1 == None {
-                print!("piece 1, ")
-            }
-            if value.serv2 == None {
-                print!("piece 2, ")
-            }
-            if value.serv3 == None {
-                print!("piece 3, ")
-            }
-            if value.serv4 == None {
-                print!("piece 4, ")
-            }
-            println!();
         }
         else{
             println!("COMPLETE");
@@ -290,7 +292,7 @@ fn download_file(info:HashMap<String, Servers>){
     input = input.to_string().trim().to_string();
     println!("INPUT: {}", input);
 
-    let temp:&Servers = match info.get(&input){
+    let f_info:&FileInfo = match info.get(&input){
         Some(v) => v,
         None => {
             println!("file \"{}\" does not exist",input);
@@ -298,26 +300,20 @@ fn download_file(info:HashMap<String, Servers>){
         },
     };
 
-    if temp.serv1 == None || 
-       temp.serv2 == None || 
-       temp.serv3 == None || 
-       temp.serv4 == None {
+    if !f_info.complete_file(){
         println!("file {} is incomplete!!!. Won't be downloading", input);
         return
     }
 
     println!("file {} is complete!!!", input);
-    let arr: [SocketAddr; 4] = [
-            temp.serv1.unwrap(),
-            temp.serv2.unwrap(),
-            temp.serv3.unwrap(),
-            temp.serv4.unwrap(),
-    ];
+    let arr: [Option<SocketAddr>; 4] = f_info.pieces.clone(); //removing this requires f_info.pieces
+    //array to be static with an explicit lifetime. Not to sure how to do that and what that
+    //means for the program so I'm gonna stick to this jank code for now
 
     for n in 0..4 {
         let temp:String = input.clone();
         let handle = thread::spawn(move || {
-            download_piece(arr[n], temp, (n+1) as u8);
+            download_piece(arr[n].unwrap(), temp, (n+1) as u8);
         });
         match handle.join() {
             Ok(_v) => (),
