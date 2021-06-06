@@ -38,9 +38,15 @@ impl Default for FileInfo{ //filling out default info for FileInfo struct
 }
 
 fn main() {
+    let servers:Vec<SocketAddr> = match get_child_servers(){
+        Some(v) => v,
+        None => {
+            println!("Error occurred when getting child servers");
+            return
+        },
+    };
 //    menu();
-//    backup_file("test.txt".to_string());
-    let test:FileInfo = Default::default();
+    backup_file("test.txt".to_string(), servers);
 }
 
 fn menu(){
@@ -71,7 +77,7 @@ backup: backup a file
     }
 }
 
-fn backup_file(fname: String, serv_data: FileInfo){
+fn backup_file(fname: String, serv_data: Vec<SocketAddr>){
     let mut file = match File::open(&fname){ //opening file
         Ok(v) => v,
         Err(e) => {
@@ -114,36 +120,26 @@ fn backup_file(fname: String, serv_data: FileInfo){
         sizes[i] += 1;
     }
 
-    for i in sizes{
+    for i in &sizes{
         println!("piece: {}", i);
     }
 
-    for i in 0..4{
-        println!("{}", i * fourth);
-        println!("{}", std::str::from_utf8(&buffer[i * fourth..(i + 1) * fourth]).unwrap());
+    for i in 0..3{
+        println!("from: {} to: {}", sizes[i], sizes[i+1]);
+        println!("{}", std::str::from_utf8(&buffer[sizes[i]..sizes[i+1]]).unwrap());
     }
 
-    /*
-    match TcpStream::connect(server) {
-        Ok(mut stream) => {
-            println!("Successfully connected to server in port 3333");
-                match file.write_all(&data[0..bytes]){
-                    Ok(_v) => (),
-                    Err(e) => {
-                        println!("error writing to file {}.{}", file_name, piece);
-                        println!("ERR: {}", e);
-                        return;
-                    },
-                };
-                println!("BYTES: {}", bytes);
-            }
-        },
-        Err(e) => {
-            println!("Failed to connect: {}", e);
+    for server in serv_data{
+        match TcpStream::connect(server) {
+            Ok(mut stream) => {
+                println!("succesfuly connected to {:?}", server);
+//                stream.write(&buffer[i * fourth
+            },
+            Err(e) => {
+                println!("Failed to connect: {}", e);
+            },
         }
     }
-    println!("Completed writing file {}.{}", file_name, piece);
-     */
 }
 
 /*
