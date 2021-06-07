@@ -84,7 +84,7 @@ fn handler(mut stream: TcpStream){
         }
     }
 
-    let result = match str::from_utf8(&buffer){
+    let result = match str::from_utf8(&buffer[0..4]){
         Ok(v) => v,
         Err(e) => {
             println!("Error in converting TCP stream to string\nERR: {}", e);
@@ -92,15 +92,41 @@ fn handler(mut stream: TcpStream){
         },
     };
 
-    let args: Vec<&str> = result.split("\n").collect();
-    match args[0]{
+    match result{
         "list" => {
             println!("going to send list of files to client");
             send_files(stream);
         },
-        "file" => println!("going to receive file from client"),
-        "delete" => println!("going to delete the file on server"),
-        _ => println!("NOT A CASE: {}", args[0]),
+        "file" => {
+            println!("going to receive file from client");
+            let mut fname = String::new();
+            let mut loc = 4;
+            loop{
+                if buffer[loc] as char == '\n'{break}
+                fname.push(buffer[loc] as char);
+                loc += 1;
+            }
+            println!("fname: {}", fname);
+            let mut file = match fs::File::create(fname.clone()){
+                Ok(v) => v,
+                Err(e) => {
+                    println!("couldn't open file {}", fname);
+                    println!("ERR: {}", e);
+                    return
+                },
+            };
+            buffer.iter_mut().for_each(|m| *m=0);
+            match stream.read(&mut buffer){
+                Ok(_) => (),
+                Err(e) => {
+                    println!("Error in reading TCP stream\nERR: {}", e);
+                    return;
+                },
+            }
+            file.write_all(&buffer);
+        },
+        "delt" => println!("going to delete the file on server"),
+        _ => println!("NOT A CASE: {}", result),
     }
 }
 

@@ -114,31 +114,43 @@ fn backup_file(fname: String, serv_data: Vec<SocketAddr>){
     }
     let remainder = (metadata.len() as usize) % 4; //determine odd sized file pieces
     let fourth:usize = (metadata.len() as usize) / 4; //determine fourth size of file length
-    let mut sizes: Vec<usize> = vec![fourth; 4]; //array to keep track of file sizes
+    let mut indexes: Vec<usize> = vec![fourth; 5]; //array to keep track of file indexes
+    indexes[0] = 0;
 
+    for i in 2..5 { //updating the indexes
+        indexes[i] += indexes[i-1];
+    }
     for i in 0..remainder{ //updating odd sized pieces
-        sizes[i] += 1;
+        for j in i..4{ //moving indexes accordingly
+            println!("before: {}", indexes[j+1]);
+            indexes[j+1] += 1;
+            println!("after: {}", indexes[j+1]);
+        }
     }
 
-    for i in &sizes{
-        println!("piece: {}", i);
+    for i in &indexes{
+        println!("indexes: {}", i);
     }
 
-    for i in 0..3{
-        println!("from: {} to: {}", sizes[i], sizes[i+1]);
-        println!("{}", std::str::from_utf8(&buffer[sizes[i]..sizes[i+1]]).unwrap());
+    for i in 0..4{
+        println!("from: {} to: {}", indexes[i], indexes[i+1]-1);
+        println!("{}", std::str::from_utf8(&buffer[indexes[i]..indexes[i+1]]).unwrap());
     }
 
-    for server in serv_data{
+    for i in 0..serv_data.len(){
+        let server = serv_data[i];
         match TcpStream::connect(server) {
             Ok(mut stream) => {
                 println!("succesfuly connected to {:?}", server);
-//                stream.write(&buffer[i * fourth
+                let message = format!("file{}.{}\n", fname, 1);
+                stream.write(message.as_bytes());
+                stream.write(&buffer[indexes[i]..indexes[i+1]]);
             },
             Err(e) => {
                 println!("Failed to connect: {}", e);
             },
         }
+
     }
 }
 
@@ -253,7 +265,7 @@ fn get_child_servers() -> Option<Vec<SocketAddr>>{
     for i in info{
         let server: SocketAddr = match i.parse(){
             Err(e) => {
-                println!("ERR: {}\nVAL: {}", e, i);
+                if !i.is_empty(){println!("ERR: {}\nVAL: {}", e, i);}
                 continue;
             },
             Ok(addr) => addr
